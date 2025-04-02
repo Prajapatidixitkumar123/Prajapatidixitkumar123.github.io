@@ -1,33 +1,44 @@
 <?php
+// Enable error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 // Prevent any output before headers
 ob_start();
-
-// Enable error reporting
-error_reporting(E_ALL);
-ini_set('display_errors', 0); // Set to 0 to prevent error messages in JSON
 
 // Set headers
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
-header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Headers: Content-Type, Accept');
 header('Content-Type: application/json; charset=UTF-8');
-
-// Clear any previous output
-ob_clean();
 
 // Function to send JSON response
 function sendJsonResponse($success, $message, $statusCode = 200) {
     http_response_code($statusCode);
-    echo json_encode([
+    $response = json_encode([
         'success' => $success,
         'message' => $message
     ]);
-    exit();
+    
+    if ($response === false) {
+        // Log JSON encoding error
+        error_log("JSON encode error: " . json_last_error_msg());
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Internal server error'
+        ]);
+        exit;
+    }
+    
+    echo $response;
+    exit;
 }
 
 // Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    sendJsonResponse(true, '', 200);
+    http_response_code(200);
+    exit;
 }
 
 // Verify request method
@@ -36,6 +47,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 try {
+    // Log incoming request data
+    error_log("Received registration request: " . print_r($_POST, true));
+
     // Include database connection
     require_once 'db.php';
     
@@ -101,6 +115,9 @@ try {
 
         // Commit transaction
         $conn->commit();
+        
+        // Log successful registration
+        error_log("User successfully registered: $username");
         
         sendJsonResponse(true, 'Registration successful! Please log in.');
 
