@@ -253,7 +253,7 @@
             <i class="fas fa-gamepad"></i>
         </div>
         <h2>Create Account</h2>
-        <form id="registerForm" method="POST">
+        <form id="registerForm">
             <div class="input-group">
                 <i class="fas fa-user"></i>
                 <input type="text" id="regUsername" name="username" placeholder="Username" required>
@@ -511,9 +511,6 @@
             try {
                 const formData = new FormData(e.target);
                 
-                // Log the form data (for debugging)
-                console.log('Sending registration data:', Object.fromEntries(formData));
-
                 const response = await fetch('register.php', {
                     method: 'POST',
                     body: formData,
@@ -522,36 +519,21 @@
                     }
                 });
 
-                // Log the response headers and status (for debugging)
-                console.log('Response status:', response.status);
-                console.log('Response headers:', response.headers);
-
-                // Check if the response is ok
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    throw new Error(`Registration failed (${response.status}). Please try again.`);
                 }
 
-                const contentType = response.headers.get('content-type');
-                console.log('Content-Type:', contentType);
-
-                let data;
-                const text = await response.text(); // Get the raw response text
-                console.log('Raw response:', text);
-
-                try {
-                    data = JSON.parse(text); // Try to parse it as JSON
-                } catch (e) {
-                    console.error('JSON parse error:', e);
-                    throw new Error('Server returned invalid JSON');
-                }
-
+                const data = await response.json();
+                
                 if (data.success) {
                     document.getElementById('regSuccess').textContent = data.message;
                     document.getElementById('regSuccess').style.display = 'block';
                     document.getElementById('regError').style.display = 'none';
                     
+                    // Reset form
                     e.target.reset();
                     
+                    // Redirect to login after 2 seconds
                     setTimeout(() => {
                         toggleForm('login');
                     }, 2000);
