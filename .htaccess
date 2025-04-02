@@ -1,0 +1,14 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Allow POST requests
+    <LimitExcept GET POST>
+        Order deny,allow
+        Deny from all
+    </LimitExcept>
+    
+    # Handle CORS if needed
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+    Header set Access-Control-Allow-Headers "Content-Type"
+</IfModule>
