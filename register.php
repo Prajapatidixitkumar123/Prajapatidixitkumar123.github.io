@@ -1,45 +1,54 @@
 <?php
-// Enable error reporting for debugging
+// Prevent any output before headers
+ob_start();
+
+// Enable error reporting
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0); // Set to 0 to prevent error messages in JSON
+
+// Set headers
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST');
+header('Access-Control-Allow-Headers: Content-Type');
+header('Content-Type: application/json; charset=UTF-8');
 
 // Clear any previous output
 ob_clean();
 
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST');
-header('Access-Control-Allow-Headers: Content-Type');
-header('Content-Type: application/json');
-
-// Log the request method and data
-error_log('Request Method: ' . $_SERVER['REQUEST_METHOD']);
-error_log('POST Data: ' . print_r($_POST, true));
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
+// Function to send JSON response
+function sendJsonResponse($success, $message, $statusCode = 200) {
+    http_response_code($statusCode);
     echo json_encode([
-        'success' => false,
-        'message' => 'Method not allowed. Please use POST request.'
+        'success' => $success,
+        'message' => $message
     ]);
     exit();
 }
 
+// Handle preflight requests
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    sendJsonResponse(true, '', 200);
+}
+
+// Verify request method
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    sendJsonResponse(false, 'Method not allowed. Please use POST request.', 405);
+}
+
 try {
-    // Test database connection first
+    // Include database connection
     require_once 'db.php';
     
     if (!$conn) {
         throw new Exception('Database connection failed');
     }
 
-    // Validate input
-    if (!isset($_POST['username']) || !isset($_POST['email']) || !isset($_POST['phone']) || !isset($_POST['password'])) {
-        throw new Exception('Missing required fields');
+    // Validate required fields
+    $required_fields = ['username', 'email', 'phone', 'password'];
+    foreach ($required_fields as $field) {
+        if (!isset($_POST[$field]) || empty(trim($_POST[$field]))) {
+            throw new Exception("$field is required");
+        }
     }
 
     // Sanitize inputs
@@ -58,11 +67,9 @@ try {
 
     try {
         // Check for existing user
-        $check_sql = "SELECT username, email, phone FROM users WHERE username = ? OR email = ? OR phone = ? LIMIT 1";
-        $check_stmt = $conn->prepare($check_sql);
-        
+        $check_stmt = $conn->prepare("SELECT username, email, phone FROM users WHERE username = ? OR email = ? OR phone = ? LIMIT 1");
         if (!$check_stmt) {
-            throw new Exception('Database prepare error: ' . $conn->error);
+            throw new Exception($conn->error);
         }
 
         $check_stmt->bind_param("sss", $username, $email, $phone);
@@ -71,9 +78,9 @@ try {
 
         if ($result->num_rows > 0) {
             $existing_user = $result->fetch_assoc();
-            if ($existing_user['email'] == $email) {
+            if ($existing_user['email'] === $email) {
                 throw new Exception('This email is already registered');
-            } elseif ($existing_user['phone'] == $phone) {
+            } elseif ($existing_user['phone'] === $phone) {
                 throw new Exception('This phone number is already registered');
             } else {
                 throw new Exception('This username is already taken');
@@ -81,46 +88,34 @@ try {
         }
 
         // Insert new user
-        $insert_sql = "INSERT INTO users (username, email, phone, password, created_at) VALUES (?, ?, ?, ?, NOW())";
-        $insert_stmt = $conn->prepare($insert_sql);
-        
+        $insert_stmt = $conn->prepare("INSERT INTO users (username, email, phone, password) VALUES (?, ?, ?, ?)");
         if (!$insert_stmt) {
-            throw new Exception('Database prepare error: ' . $conn->error);
+            throw new Exception($conn->error);
         }
 
         $insert_stmt->bind_param("ssss", $username, $email, $phone, $password);
         
         if (!$insert_stmt->execute()) {
-            throw new Exception('Failed to create account: ' . $insert_stmt->error);
+            throw new Exception($insert_stmt->error);
         }
 
         // Commit transaction
         $conn->commit();
-
-        echo json_encode([
-            'success' => true,
-            'message' => 'Registration successful! Please log in.'
-        ]);
+        
+        sendJsonResponse(true, 'Registration successful! Please log in.');
 
     } catch (Exception $e) {
-        // Rollback transaction on error
         $conn->rollback();
         throw $e;
     }
 
 } catch (Exception $e) {
     error_log('Registration error: ' . $e->getMessage());
-    
-    echo json_encode([
-        'success' => false,
-        'message' => $e->getMessage()
-    ]);
+    sendJsonResponse(false, $e->getMessage(), 400);
 }
 
 // Close connection
 if (isset($conn)) {
     $conn->close();
 }
-
-exit();
 ?>
