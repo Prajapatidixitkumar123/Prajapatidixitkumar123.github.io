@@ -1,11 +1,19 @@
 <?php
+// Enable error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+// Clear any previous output
+ob_clean();
+
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: application/json');
 
-// Prevent any HTML output before JSON
-ob_clean();
+// Log the request method and data
+error_log('Request Method: ' . $_SERVER['REQUEST_METHOD']);
+error_log('POST Data: ' . print_r($_POST, true));
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -22,7 +30,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 try {
-    include 'db.php';
+    // Test database connection first
+    require_once 'db.php';
+    
+    if (!$conn) {
+        throw new Exception('Database connection failed');
+    }
 
     // Validate input
     if (!isset($_POST['username']) || !isset($_POST['email']) || !isset($_POST['phone']) || !isset($_POST['password'])) {
@@ -96,7 +109,6 @@ try {
     }
 
 } catch (Exception $e) {
-    // Log error
     error_log('Registration error: ' . $e->getMessage());
     
     echo json_encode([
