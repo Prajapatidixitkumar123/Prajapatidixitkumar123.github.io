@@ -500,24 +500,20 @@
 
             try {
                 const formData = new FormData(e.target);
-                
-                if (formData.get('password') !== formData.get('confirm_password')) {
-                    throw new Error('Passwords do not match');
-                }
-
                 const response = await fetch('register.php', {
                     method: 'POST',
                     body: formData
                 });
 
-                // Check response type
+                let data;
                 const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
+                
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    console.error('Invalid content type:', contentType);
                     throw new Error('Server returned invalid response format');
                 }
-
-                const data = await response.json();
-                console.log('Registration response:', data);
 
                 if (data.success) {
                     document.getElementById('regSuccess').textContent = data.message;
@@ -534,7 +530,7 @@
                 }
             } catch (error) {
                 console.error('Registration error:', error);
-                document.getElementById('regError').textContent = error.message || 'An error occurred. Please try again.';
+                document.getElementById('regError').textContent = error.message;
                 document.getElementById('regError').style.display = 'block';
                 document.getElementById('regSuccess').style.display = 'none';
             } finally {
