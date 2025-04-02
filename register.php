@@ -15,23 +15,10 @@ header('Content-Type: application/json; charset=UTF-8');
 // Function to send JSON response
 function sendJsonResponse($success, $message, $statusCode = 200) {
     http_response_code($statusCode);
-    $response = json_encode([
+    echo json_encode([
         'success' => $success,
         'message' => $message
     ]);
-    
-    if ($response === false) {
-        // Log JSON encoding error
-        error_log("JSON encode error: " . json_last_error_msg());
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'message' => 'Internal server error'
-        ]);
-        exit;
-    }
-    
-    echo $response;
     exit;
 }
 
@@ -47,9 +34,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 try {
-    // Log incoming request data
-    error_log("Received registration request: " . print_r($_POST, true));
-
     // Include database connection
     require_once 'db.php';
     
@@ -69,12 +53,7 @@ try {
     $username = trim($_POST['username']);
     $email = trim($_POST['email']);
     $phone = trim($_POST['phone']);
-    $password = password_hash($_POST['password'], PASSWORD_BCRYPT);
-
-    // Validate email
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        throw new Exception('Invalid email format');
-    }
+    $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
 
     // Start transaction
     $conn->begin_transaction();
@@ -82,10 +61,6 @@ try {
     try {
         // Check for existing user
         $check_stmt = $conn->prepare("SELECT username, email, phone FROM users WHERE username = ? OR email = ? OR phone = ? LIMIT 1");
-        if (!$check_stmt) {
-            throw new Exception($conn->error);
-        }
-
         $check_stmt->bind_param("sss", $username, $email, $phone);
         $check_stmt->execute();
         $result = $check_stmt->get_result();
@@ -103,10 +78,6 @@ try {
 
         // Insert new user
         $insert_stmt = $conn->prepare("INSERT INTO users (username, email, phone, password) VALUES (?, ?, ?, ?)");
-        if (!$insert_stmt) {
-            throw new Exception($conn->error);
-        }
-
         $insert_stmt->bind_param("ssss", $username, $email, $phone, $password);
         
         if (!$insert_stmt->execute()) {
@@ -116,9 +87,6 @@ try {
         // Commit transaction
         $conn->commit();
         
-        // Log successful registration
-        error_log("User successfully registered: $username");
-        
         sendJsonResponse(true, 'Registration successful! Please log in.');
 
     } catch (Exception $e) {
@@ -127,12 +95,6 @@ try {
     }
 
 } catch (Exception $e) {
-    error_log('Registration error: ' . $e->getMessage());
     sendJsonResponse(false, $e->getMessage(), 400);
-}
-
-// Close connection
-if (isset($conn)) {
-    $conn->close();
 }
 ?>
