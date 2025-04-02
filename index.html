@@ -493,48 +493,39 @@
         document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            // Show loading state
             const submitButton = e.target.querySelector('button[type="submit"]');
             const originalButtonText = submitButton.textContent;
             submitButton.textContent = 'Creating Account...';
             submitButton.disabled = true;
 
-            // Clear previous messages
-            document.getElementById('regError').style.display = 'none';
-            document.getElementById('regSuccess').style.display = 'none';
-
             try {
-                // Get form data
                 const formData = new FormData(e.target);
                 
-                // Basic validation
                 if (formData.get('password') !== formData.get('confirm_password')) {
                     throw new Error('Passwords do not match');
                 }
 
-                // Make the request
                 const response = await fetch('register.php', {
                     method: 'POST',
-                    headers: {
-                        'Accept': 'application/json'
-                    },
-                    body: formData,
-                    credentials: 'same-origin'
+                    body: formData
                 });
 
-                // Try to parse JSON response
+                // Check response type
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Server returned invalid response format');
+                }
+
                 const data = await response.json();
-                console.log('Registration response:', data); // Debug log
+                console.log('Registration response:', data);
 
                 if (data.success) {
-                    // Show success message
                     document.getElementById('regSuccess').textContent = data.message;
                     document.getElementById('regSuccess').style.display = 'block';
+                    document.getElementById('regError').style.display = 'none';
                     
-                    // Clear form
                     e.target.reset();
                     
-                    // Redirect to login after delay
                     setTimeout(() => {
                         toggleForm('login');
                     }, 2000);
@@ -543,12 +534,10 @@
                 }
             } catch (error) {
                 console.error('Registration error:', error);
-                
-                // Show error message
                 document.getElementById('regError').textContent = error.message || 'An error occurred. Please try again.';
                 document.getElementById('regError').style.display = 'block';
+                document.getElementById('regSuccess').style.display = 'none';
             } finally {
-                // Reset button state
                 submitButton.textContent = originalButtonText;
                 submitButton.disabled = false;
             }
