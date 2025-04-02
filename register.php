@@ -1,5 +1,17 @@
 <?php
+// Allow POST requests
+header('Access-Control-Allow-Methods: POST');
 header('Content-Type: application/json');
+
+// Only process POST requests
+if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+    http_response_code(405);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Method not allowed. Please use POST request.'
+    ]);
+    exit();
+}
 
 try {
     include 'db.php';
@@ -90,37 +102,5 @@ if (isset($conn)) {
     $conn->close();
 }
 
-// Important: Exit after sending response
 exit();
-?>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register - GameVerse</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-</head>
-<body>
-    <div class="register-container">
-        <h2>Create Account</h2>
-        <form method="POST" action="register.php">
-            <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" required>
-            </div>
-            <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" required>
-            </div>
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" required>
-            </div>
-            <button type="submit">Register</button>
-        </form>
-        <p>Already have an account? <a href="login.php">Login here</a></p>
-    </div>
-</body>
 ?>
