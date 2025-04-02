@@ -1,25 +1,23 @@
 <?php
-// Database configuration
-$db_host = 'your_host';  // Usually 'localhost' or provided by your hosting service
-$db_user = 'your_username';
-$db_pass = 'your_password';
-$db_name = 'your_database_name';
+$host = 'localhost';     // Your database host
+$dbname = 'your_db';     // Your database name
+$username = 'your_user'; // Your database username
+$password = 'your_pass'; // Your database password
 
-// Create connection with error handling
 try {
-    $conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
+    $conn = new mysqli($host, $username, $password, $dbname);
     
-    // Check connection
     if ($conn->connect_error) {
-        error_log("Connection failed: " . $conn->connect_error);
+        error_log("Database connection failed: " . $conn->connect_error);
         throw new Exception("Database connection failed");
     }
     
-    // Set charset to utf8mb4
     $conn->set_charset("utf8mb4");
-    
 } catch (Exception $e) {
     error_log("Database connection error: " . $e->getMessage());
-    die("Database connection failed");
+    die(json_encode([
+        'success' => false,
+        'message' => 'Database connection failed'
+    ]));
 }
 ?>
